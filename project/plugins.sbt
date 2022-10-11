@@ -1,0 +1,5 @@
+addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat"              % "0.4.1")
+addSbtPlugin("org.scalameta"             % "sbt-scalafmt"              % "2.4.6")
+addSbtPlugin("com.timushev.sbt"          % "sbt-updates"               % "0.6.3")
+addSbtPlugin("ch.epfl.scala"             % "sbt-scalafix"              % "0.10.3")
+addSbtPlugin("com.github.cb372"          % "sbt-explicit-dependencies" % "0.2.16")
