@@ -1,18 +1,18 @@
 package documents
 
+import auth.Session
 import cats.implicits._
 import cats.effect.{Async, Ref, Sync}
 import cats.effect.kernel.Resource
 import cats.effect.std.Random
 import fs2.Stream
 import fs2.io.file.{Files, Path}
-
-import scala.collection.mutable
+import random.RandomId
 
 trait Documents[F[_]] {
   def getTempDirectory: F[Path]
-  def getDocuments: F[Seq[Document]]
-  def createDocument(fileName: String, file: Stream[F, Byte]): F[Document]
+  def getDocuments(owner: Session): F[Seq[Document]]
+  def createDocument(fileName: String, file: Stream[F, Byte], owner: Session): F[Document]
 }
 
 object Documents {
@@ -22,14 +22,16 @@ object Documents {
 
   def apply[F[_]: Async: Random]: Resource[F, Documents[F]] = for {
     tempDirectory <- Files[F].tempDirectory
-    documentsRef  <- Resource.eval(Ref[F].of(Seq.empty[Document]))
+    documentsRef  <- Resource.eval(Ref[F].of(Map.empty[Session, Seq[DocumentRecord]]))
   } yield new Documents[F] {
     override def getTempDirectory: F[Path] = Sync[F].pure(tempDirectory)
 
-    override def getDocuments: F[Seq[Document]] = documentsRef.get
+    override def getDocuments(owner: Session): F[Seq[Document]] = for {
+      documentsByOwner <- documentsRef.get
+    } yield documentsByOwner.getOrElse(owner, List.empty).map(_.document)
 
-    override def createDocument(fileName: String, file: Stream[F, Byte]): F[Document] = for {
-      documentId <- randomId
+    override def createDocument(fileName: String, file: Stream[F, Byte], owner: Session): F[Document] = for {
+      documentId <- RandomId[F]()
       documentDirectory = tempDirectory / documentId
       documentPath      = documentDirectory / fileName
       _ <- Files[F].createDirectories(documentDirectory)
@@ -65,16 +67,11 @@ object Documents {
           .toList
       }
       document = Document(documentId, fileName, pages)
-      _ <- documentsRef.update(_ :+ document)
+      _ <- documentsRef.update { documentsByOwner =>
+        documentsByOwner.updatedWith(owner) { prev =>
+          Some(prev.getOrElse(Seq.empty) :+ DocumentRecord(document, owner))
+        }
+      }
     } yield document
-
-    private val randomId: F[String] = Stream
-      .range(0, 10)
-      .evalMap(_ => Random[F].nextAlphaNumeric)
-      .fold(new mutable.StringBuilder)(_ append _)
-      .take(1)
-      .compile
-      .lastOrError
-      .map(_.toString())
   }
 }
