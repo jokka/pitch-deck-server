@@ -7,7 +7,7 @@ Server is a [Scala](https://www.scala-lang.org) project managed by [sbt.](https:
 If you happen to have [JDK 17](https://aws.amazon.com/corretto/) and [sbt](https://www.scala-sbt.org) installed, just run the following command.
 
 ```shell
-cd pitch-deck-server && sbt run
+sbt run
 ```
 
 If you don’t, just run it using [Docker.](https://www.docker.com)
