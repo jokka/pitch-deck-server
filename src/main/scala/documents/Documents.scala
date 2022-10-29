@@ -74,7 +74,7 @@ object Documents {
               ) =>
                 Stream
                   .emits(pdfPages)
-                  .evalMap { pdfPage =>
+                  .parEvalMap[F, Unit](Runtime.getRuntime.availableProcessors) { pdfPage =>
                     val pageDirectory = documentDirectory / pdfPage.index.toString
                     val imagePath     = pageDirectory / s"${constraint}x.png"
 
