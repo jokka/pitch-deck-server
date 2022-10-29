@@ -8,16 +8,15 @@ import random.RandomId
 trait Sessions[F[_]] {
   def createSession: F[Session]
   def getSession(sessionToken: String): F[Option[Session]]
-
   def verifySession(sessionToken: String): F[Boolean]
 }
 
 object Sessions {
-  def apply[F[_]: Sync: Random]: Resource[F, Sessions[F]] = for {
-    sessionsRef <- Resource.eval(Ref[F].of(Set.empty[Session]))
+  def apply[F[_]: Sync: Random]: F[Sessions[F]] = for {
+    sessionsRef <- Ref[F].of(Set.empty[Session])
   } yield new Sessions[F] {
     override def createSession: F[Session] = for {
-      sessionToken <- RandomId[F](32)
+      sessionToken <- RandomId[F](128)
       session = Session(sessionToken)
       _ <- sessionsRef.update(sessions => sessions + session)
     } yield session

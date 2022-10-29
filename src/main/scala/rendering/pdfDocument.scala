@@ -1,8 +1,10 @@
 package rendering
 
-import cats.effect.Sync
+import cats.effect._
+import cats.effect.implicits.monadCancelOps_
 import cats.effect.kernel.Resource
 import fs2.io.file.Path
+
 import javax.imageio.ImageIO
 import org.apache.pdfbox.io.RandomAccessFile
 import org.apache.pdfbox.pdfparser.PDFParser
@@ -10,7 +12,7 @@ import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.PDFRenderer
 
 object pdfDocument {
-  def apply[F[_]: Sync](documentPath: Path): Resource[F, Seq[pdfPage[F]]] =
+  def apply[F[_]: Sync](documentPath: Path, beforeRender: F[Unit]): Resource[F, Seq[pdfPage[F]]] =
     pdDocument(documentPath).map { document =>
       fs2.Stream
         .range(0, document.getNumberOfPages)
@@ -23,7 +25,7 @@ object pdfDocument {
 
             override val aspectRatio: Double = box.getWidth.toDouble / box.getHeight
 
-            override def renderPng(width: Int, filePath: Path): F[Unit] = Sync[F].blocking {
+            override def renderPng(width: Int, filePath: Path): F[Unit] = beforeRender !> Sync[F].blocking {
               val scale    = width / box.getWidth
               val renderer = new PDFRenderer(document)
 
